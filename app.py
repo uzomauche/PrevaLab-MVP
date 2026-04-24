@@ -5,7 +5,7 @@ import kagglehub
 import os
 
 # --- 1. PROFESSIONAL PAGE SETTINGS ---
-st.set_page_config(page_title="PrevaLab AI | Enterprise", layout="wide")
+st.set_page_config(page_title="PrevaLab AI | Enterprise", layout="wide", initial_sidebar_state="expanded")
 
 # --- 2. HIDE WATERMARKS ---
 hide_streamlit_style = """
@@ -17,12 +17,27 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# --- 3. DASHBOARD HEADER ---
+# --- 3. SIDEBAR: FINANCIALS & CONTROLS ---
+with st.sidebar:
+    st.title("⚙️ PrevaLab Controls")
+    st.markdown("Pathology Lab Management")
+    st.divider()
+    
+    st.subheader("💷 Estimated Cost Savings")
+    st.markdown("*Based on prevented downtime*")
+    st.metric(label="Monthly Savings (YTD)", value="£14,250", delta="+£1,200 vs Last Month")
+    st.metric(label="Prevented Emergency Callouts", value="6", delta="Optimal")
+    
+    st.divider()
+    st.markdown("**System Status:** Online 🟢")
+    st.markdown("**Location:** Queen Elizabeth Hospital (Pilot)")
+
+# --- 4. DASHBOARD HEADER ---
 st.title("🔬 PrevaLab AI: Enterprise Command Center")
 st.markdown("**NHS Trust Pilot Environment** | Aggregating Real-Time Telemetry & Historical Error Logs")
 st.divider()
 
-# --- 4. AUTOMATED DATA PIPELINE ---
+# --- 5. AUTOMATED DATA PIPELINE ---
 @st.cache_data
 def load_kaggle_data():
     dataset_path = kagglehub.dataset_download("stephanmatzka/predictive-maintenance-dataset-ai4i-2020")
@@ -34,15 +49,11 @@ def load_kaggle_data():
 
 df = load_kaggle_data()
 
-# --- 5. ENTERPRISE DASHBOARD LAYOUT ---
+# --- 6. ENTERPRISE DASHBOARD LAYOUT ---
 if not df.empty:
-    # Separate data into "Live" (last 100 rows) and "Historical Errors"
     df_live = df.tail(100).reset_index()
-    
-    # Isolate only the rows where a machine actually failed
     df_errors = df[df['Machine failure'] == 1].copy()
     
-    # Map the dataset's technical abbreviations to professional NHS terms
     df_errors['Failure Type'] = df_errors[['TWF', 'HDF', 'PWF', 'OSF', 'RNF']].idxmax(axis=1)
     failure_map = {
         'TWF': 'Tool Wear Failure (High Risk)', 
@@ -58,8 +69,8 @@ if not df.empty:
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     kpi1.metric(label="Overall Fleet Health", value="96.8%", delta="-1.2% (Monitor)")
     kpi2.metric(label="Total Historical Faults Logged", value=f"{len(df_errors)}", delta="Database Sync Active")
-    kpi3.metric(label="Predicted Maintenance Interventions", value="3", delta="Required within 7 Days", delta_color="inverse")
-    kpi4.metric(label="DSPT & GDPR Compliance Status", value="100%", delta="Secure Connection")
+    kpi3.metric(label="Predicted Interventions", value="3", delta="Required within 7 Days", delta_color="inverse")
+    kpi4.metric(label="DSPT & GDPR Compliance", value="100%", delta="Secure Connection")
     st.divider()
 
     # --- SECTION B: REAL-TIME TELEMETRY ---
@@ -85,11 +96,20 @@ if not df.empty:
         st.plotly_chart(fig3, use_container_width=True)
     st.divider()
 
-    # --- SECTION C: HISTORICAL ERROR LOGS ---
-    st.subheader("📂 Historical Error Logs & AI Diagnostics")
-    st.markdown("Machine learning models analyze these historical fault patterns alongside real-time data to predict future downtime.")
+    # --- SECTION C: HISTORICAL ERROR LOGS & DOWNLOAD ---
+    colA, colB = st.columns([3, 1])
+    with colA:
+        st.subheader("📂 Historical Error Logs & AI Diagnostics")
+    with colB:
+        # THE DOWNLOAD BUTTON
+        csv_data = df_errors.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Audit Report (CSV)",
+            data=csv_data,
+            file_name='PrevaLab_Maintenance_Audit.csv',
+            mime='text/csv',
+        )
     
-    # Format the data table to look like a professional log
     display_cols = ['UDI', 'Product ID', 'Type', 'Rotational speed [rpm]', 'Process temperature [K]', 'Diagnostic Description']
     df_display = df_errors[display_cols].tail(10).reset_index(drop=True)
     df_display.rename(columns={'UDI': 'Log ID', 'Type': 'Machine Quality'}, inplace=True)
